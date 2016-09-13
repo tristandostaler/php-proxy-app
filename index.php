@@ -38,6 +38,9 @@ if(Config::get('url_mode') == 2){
 // very important!!! otherwise requests are queued while waiting for session file to be unlocked
 session_write_close();
 
+$urlHasBeenSet = false;
+$url = "";
+
 // form submit in progress...
 if(isset($_POST['url'])){
 	
@@ -56,21 +59,45 @@ if(isset($_POST['url'])){
 		// redirect to...
 		header("HTTP/1.1 302 Found"); 
 		header("Location: ".Config::get('index_redirect'));
-		
-	} else {
+		exit;
+	} else if(Config::get('provide_url_form')){
 		echo render_template("./templates/main.php", array('version' => Proxy::VERSION));
+		exit;
 	}
-
-	exit;
+	else {
+		$url = Config::get('default_site');
+		$urlHasBeenSet = true;
+	}
 }
 
-// decode q parameter to get the real URL
-$url = url_decrypt($_GET['q']);
+// decode q parameter to get the real URL if not previously set
+if(!$urlHasBeenSet)
+	$url = url_decrypt($_GET['q']);
+
+//Denied URL
+if(strpos($url, '//127.') !== false){
+        $url = Config::get('default_site');
+}
+if(strpos($url, '//192.168.') !== false){
+        $url = Config::get('default_site');
+}
+if(strpos($url, '//10.') !== false){
+        $url = Config::get('default_site');
+}
+if(strpos($url, '//172.') !== false){
+        $url = Config::get('default_site');
+}
+if(strpos($url, '//::1') !== false){
+        $url = Config::get('default_site');
+}
 
 $proxy = new Proxy();
 
 // load plugins
 foreach(Config::get('plugins', array()) as $plugin){
+
+	if(!Config::get('provide_url_form') && $plugin == "UrlForm")
+		continue;
 
 	$plugin_class = $plugin.'Plugin';
 	
